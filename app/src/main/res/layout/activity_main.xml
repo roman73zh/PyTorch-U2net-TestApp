@@ -21,9 +21,19 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="6"
-        android:layout_marginRight="10px"
+        android:layout_marginRight="20px"
         android:text="Выбрать картинку"
         android:onClick="openFileChooser"
+        />
+
+    <Button
+        android:id="@+id/BtnRepeat"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginRight="20px"
+        android:text="↻"
+        android:onClick="repeat"
         />
 
     <Button
@@ -31,8 +41,6 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:layout_marginLeft="10px"
-
         android:text="⚙"
         android:onClick="showConfig"
         />

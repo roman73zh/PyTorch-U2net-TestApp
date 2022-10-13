@@ -58,14 +58,14 @@ public class netUtils {
         return grayToneImage;
     }
 
-    private static void bitmapComposeWorker(int [] imageValues, int[] maskValues, int[] outputValues, int start, int stop){
+    private static void bitmapComposeWorker(int [] imageValues, int[] maskValues, int[] outputValues, int start, int stop, int threshold){
         for (int i = start; i < stop; i++){
             int alpha = maskValues[i];
-            outputValues[i] = imageValues[i] & 0xFFFFFF | (alpha >>> 24 > 128 ? alpha : 0);
+            outputValues[i] = imageValues[i] & 0xFFFFFF | (alpha >>> 24 > threshold ? alpha : 0);
         }
     }
 
-    public static Bitmap composeBitmaps(Bitmap image, Bitmap mask, int width, int height, int threads) throws ExecutionException, InterruptedException {
+    public static Bitmap composeBitmaps(Bitmap image, Bitmap mask, int width, int height, int threshold, int threads) throws ExecutionException, InterruptedException {
         ExecutorService bitmapComposeThreadPool = Executors.newFixedThreadPool(threads);
         int[] imageValues = new int[width * height];
         int[] maskValues = new int[width * height];
@@ -78,7 +78,7 @@ public class netUtils {
         for (int i = 0; i < imageValues.length; i += step){
             int finalI = i;
             futures.add(bitmapComposeThreadPool.submit(() -> {
-                bitmapComposeWorker(imageValues, maskValues, resultValues, finalI, Math.min(finalI + step, imageValues.length));
+                bitmapComposeWorker(imageValues, maskValues, resultValues, finalI, Math.min(finalI + step, imageValues.length), threshold);
                 return true;
             }));
         }
