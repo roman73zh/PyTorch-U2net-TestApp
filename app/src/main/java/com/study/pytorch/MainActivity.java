@@ -1,22 +1,22 @@
 package com.study.pytorch;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
@@ -34,6 +34,8 @@ public class MainActivity extends AppCompatActivity {
 
     public static final int FILE_REQUEST = 1;
     ImageView imageView;
+    ImageView maskView;
+    TextView netTimeViev;
     Module module = null;
     Bitmap bitmap = null;
 
@@ -42,6 +44,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         imageView = findViewById(R.id.image);
+        maskView = findViewById(R.id.mask);
+        netTimeViev = findViewById(R.id.netTimeViev);
 
         if ((ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
                 || (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
@@ -59,7 +63,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    @RequiresApi(api = Build.VERSION_CODES.N)
     public void onActivityResult(int reqCode, int resultCode, Intent data){
         super.onActivityResult(resultCode, resultCode, data);
         if (reqCode == FILE_REQUEST && resultCode == Activity.RESULT_OK){
@@ -68,7 +71,7 @@ public class MainActivity extends AppCompatActivity {
             Uri uri = data.getData();
             Toast.makeText(getApplicationContext(), "Preparing", Toast.LENGTH_SHORT).show();
 
-            Runnable runnable = () -> {
+            @SuppressLint("SetTextI18n") Runnable runnable = () -> {
                 try {
                     InputStream inputStream = getContentResolver().openInputStream(uri);
                     bitmap = BitmapFactory.decodeStream(inputStream);
@@ -79,7 +82,13 @@ public class MainActivity extends AppCompatActivity {
                 if (bitmap == null)
                     return;
 
-                new Handler(Looper.getMainLooper()).post(() -> imageView.setImageBitmap(bitmap));
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    maskView.setImageResource(android.R.color.transparent);
+                    imageView.setImageBitmap(bitmap);
+                    netTimeViev.setText("");
+                });
+
+                long startTime = System.currentTimeMillis();
 
                 int width = bitmap.getWidth();
                 int height = bitmap.getHeight();
@@ -90,15 +99,22 @@ public class MainActivity extends AppCompatActivity {
                         new long[]{1, 3, 320, 320});
 
 
+                long preparingTime = System.currentTimeMillis();
+
                 new Handler(Looper.getMainLooper()).post(() -> Toast.makeText(getApplicationContext(), "Starting AI", Toast.LENGTH_SHORT).show());
 
                 IValue[] outputs = module.forward(IValue.from(inTensor)).toTuple();
+
+                long aiTime = System.currentTimeMillis();
+
                 new Handler(Looper.getMainLooper()).post(() -> Toast.makeText(getApplicationContext(), "AI Finished, processing result", Toast.LENGTH_SHORT).show());
 
                 Tensor maskTensor = outputs[0].toTensor();
                 final float[] output = maskTensor.getDataAsFloatArray();
 
                 Bitmap scaledMask = Bitmap.createScaledBitmap(netUtils.convertArrayToBitmap(output, 320, 320), width, height, true);
+
+                new Handler(Looper.getMainLooper()).post(() -> maskView.setImageBitmap(scaledMask));
 
                 Bitmap transparentImage = null;
                 try {
@@ -107,13 +123,19 @@ public class MainActivity extends AppCompatActivity {
                     e.printStackTrace();
                 }
 
+                long processingTime = System.currentTimeMillis();
 
                 Bitmap finalTransparentImage = transparentImage;
 
                 new Handler(Looper.getMainLooper()).post(() -> {
                     Toast.makeText(getApplicationContext(), "Ready", Toast.LENGTH_SHORT).show();
                     imageView.setImageBitmap(finalTransparentImage);
-                    //imageView.setImageBitmap(scaledMask);
+                    netTimeViev.setText("Обработано за " +
+                                    (processingTime - startTime) + "ms - " +
+                                    (preparingTime - startTime) + "/" +
+                                    (aiTime - preparingTime) + "/" +
+                                    (processingTime - aiTime) + " (pre / AI / post)"
+                            );
                 });
 
 
@@ -132,4 +154,8 @@ public class MainActivity extends AppCompatActivity {
         startActivityForResult(intent, FILE_REQUEST);
     }
 
+    public void showConfig(View view) {
+        Intent intent = new Intent(MainActivity.this, ConfigActivity.class);
+        startActivity(intent);
+    }
 }
