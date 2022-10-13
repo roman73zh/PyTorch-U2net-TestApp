@@ -9,6 +9,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class netUtils {
     public static float[] bitmapToFloatArray(Bitmap bitmap, int width, int height){
@@ -22,8 +28,8 @@ public class netUtils {
                 arr[0][i][j][0] = (float) Color.red(pixelValue);
                 arr[0][i][j][1] = (float)Color.green(pixelValue);
                 arr[0][i][j][2] = (float)Color.blue(pixelValue);
-                float maxTmp = (arr[0][i][j][0] > arr[0][i][j][1] ? arr[0][i][j][0] : arr[0][i][j][1]);
-                maxTmp = (maxTmp >= arr[0][i][j][2] ? maxTmp : arr[0][i][j][2]);
+                float maxTmp = (Math.max(arr[0][i][j][0], arr[0][i][j][1]));
+                maxTmp = (Math.max(maxTmp, arr[0][i][j][2]));
                 if (maxTmp > maxValue)
                     maxValue = maxTmp;
             }
@@ -52,19 +58,35 @@ public class netUtils {
         return grayToneImage;
     }
 
-    public static Bitmap composeBitmaps(Bitmap image, Bitmap mask, int width, int height){
+    private static void bitmapComposeWorker(int [] imageValues, int[] maskValues, int[] outputValues, int start, int stop){
+        for (int i = start; i < stop; i++){
+            int alpha = maskValues[i];
+            outputValues[i] = imageValues[i] & 0xFFFFFF | (alpha >>> 24 > 128 ? alpha : 0);
+        }
+    }
+
+    public static Bitmap composeBitmaps(Bitmap image, Bitmap mask, int width, int height, int threads) throws ExecutionException, InterruptedException {
+        ExecutorService bitmapComposeThreadPool = Executors.newFixedThreadPool(threads);
         int[] imageValues = new int[width * height];
         int[] maskValues = new int[width * height];
+        int[] resultValues = new int[width * height];
         image.getPixels(imageValues, 0, width, 0, 0, width, height);
         mask.getPixels(maskValues, 0, width, 0, 0, width, height);
         Bitmap result = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-        for (int i = 0; i < height; i++){
-            for (int j = 0; j < width; j++){
-                int index = i * width + j;
-                int alpha = maskValues[index];
-                result.setPixel(j, i, imageValues[index] & 0xFFFFFF | (alpha >>> 24 > 128 ? alpha : 0));
-            }
+        List<Future<Boolean>> futures = new ArrayList<>();
+        int step = imageValues.length / 50;
+        for (int i = 0; i < imageValues.length; i += step){
+            int finalI = i;
+            futures.add(bitmapComposeThreadPool.submit(() -> {
+                bitmapComposeWorker(imageValues, maskValues, resultValues, finalI, Math.min(finalI + step, imageValues.length));
+                return true;
+            }));
         }
+        for (Future<Boolean> i : futures){
+            i.get();
+        }
+        bitmapComposeThreadPool.shutdown();
+        result.setPixels(resultValues, 0, width, 0, 0, width, height);
         return result;
     }
 
