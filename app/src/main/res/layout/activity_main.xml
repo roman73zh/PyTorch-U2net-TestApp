@@ -27,11 +27,25 @@
         />
 
     <Button
+        android:id="@+id/BtnSave"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginRight="20px"
+        android:paddingStart="0dp"
+        android:paddingEnd="0dp"
+        android:text="💾"
+        android:onClick="saveImage"
+        />
+
+    <Button
         android:id="@+id/BtnRepeat"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:layout_marginRight="20px"
+        android:paddingStart="0dp"
+        android:paddingEnd="0dp"
         android:text="↻"
         android:onClick="repeat"
         />
@@ -41,6 +55,8 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
+        android:paddingStart="0dp"
+        android:paddingEnd="0dp"
         android:text="⚙"
         android:onClick="showConfig"
         />
@@ -69,6 +85,14 @@
         android:layout_height="match_parent"
         android:layout_weight="1"
         android:scaleType="fitCenter" />
+
+    <SeekBar
+        android:id="@+id/maskSeekBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:max="6"
+        android:layout_marginBottom="10dp"
+        android:theme="@style/Widget.AppCompat.SeekBar.Discrete" />
 
 
 </LinearLayout>
